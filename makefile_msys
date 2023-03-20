@@ -1,0 +1,25 @@
+CC = gcc
+FLAGS = -Wall -Wundef -Wunused-parameter -Wno-deprecated-declarations -fno-common -fPIC -O2
+OBJECTS = nn_util_x.o nn_operation_x.o nn_arch_x.o nn_dataset_x.o nn_arch_build_x.o
+
+libxnn_x.dll : $(OBJECTS)
+	$(CC) -shared $(OBJECTS) -o libxnn_x.dll -lpthread
+
+nn_util_x.o : nn_util_x.c nn_variant_type_x.h nn_util_x.h
+	$(CC) -c nn_util_x.c -o nn_util_x.o $(FLAGS)
+
+nn_operation_x.o : nn_operation_x.c nn_variant_type_x.h nn_util_x.h nn_operation_x.h
+	$(CC) -c nn_operation_x.c -o nn_operation_x.o $(FLAGS)
+
+nn_arch_x.o : nn_arch_x.c nn_arch_x.h nn_variant_type_x.h nn_util_x.h
+	$(CC) -c nn_arch_x.c -o nn_arch_x.o $(FLAGS)
+
+nn_dataset_x.o : nn_dataset_x.c nn_dataset_x.h nn_variant_type_x.h nn_util_x.h
+	$(CC) -c nn_dataset_x.c -o nn_dataset_x.o $(FLAGS)
+
+nn_arch_build_x.o : nn_arch_build_x.c nn_arch_build_x.h nn_variant_type_x.h nn_util_x.h nn_operation_x.h nn_arch_x.h
+	$(CC) -c nn_arch_build_x.c -o nn_arch_build_x.o $(FLAGS)
+
+.PHONY : clean
+clean :
+	rm libxnn_x.dll $(OBJECTS)
