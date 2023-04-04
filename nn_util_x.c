@@ -3,14 +3,18 @@
 
 var_t_x *alloc_real_x(num_t_x num) {
   var_t_x *res = (var_t_x *)malloc(sizeof(var_t_x));
+#ifdef NN_NOCHECK_X
   if (res == NULL)
     return NULL;
+#endif
   res->type = REAL_X;
   res->val = malloc(sizeof(real_t_x));
+#ifdef NN_NOCHECK_X
   if (res->val == NULL) {
     free(res);
     return NULL;
   }
+#endif
   real_t_x *val = (real_t_x *)res->val;
   val->real = num;
   return res;
@@ -18,47 +22,60 @@ var_t_x *alloc_real_x(num_t_x num) {
 
 var_t_x *alloc_vec_x(int n) {
   var_t_x *res = (var_t_x *)malloc(sizeof(var_t_x));
+#ifdef NN_NOCHECK_X
   if (res == NULL)
     return NULL;
+#endif
   res->type = VEC_X;
   res->val = malloc(sizeof(vec_t_x));
+#ifdef NN_NOCHECK_X
   if (res->val == NULL) {
     free(res);
     return NULL;
   }
+#endif
   vec_t_x *val = (vec_t_x *)res->val;
   val->n = n;
   val->vec = (num_t_x *)malloc(n*sizeof(num_t_x));
+#ifdef NN_NOCHECK_X
   if (val->vec == NULL) {
     free(res->val);
     free(res);
     return NULL;
   }
+#endif
   return res;
 }
 
 var_t_x *alloc_mat_x(int n, int m) {
   var_t_x *res = (var_t_x *)malloc(sizeof(var_t_x));
+#ifdef NN_NOCHECK_X
   if (res == NULL)
     return NULL;
+#endif
   res->type = MAT_X;
   res->val = malloc(sizeof(mat_t_x));
+#ifdef NN_NOCHECK_X
   if (res->val == NULL) {
     free(res);
     return NULL;
   }
+#endif
   int i;
   mat_t_x *val = (mat_t_x *)res->val;
   val->n = n;
   val->m = m;
   val->mat = (num_t_x **)malloc(n*sizeof(num_t_x*));
+#ifdef NN_NOCHECK_X
   if (val->mat == NULL) {
     free(res->val);
     free(res);
     return NULL;
   }
+#endif
   for (i = 0; i < n; ++i) {
     val->mat[i] = (num_t_x *)malloc(m*sizeof(num_t_x));
+#ifdef NN_NOCHECK_X
     if (val->mat[i] == NULL) {
       int tmp;
       for (tmp = 0; tmp < i; ++tmp)
@@ -68,49 +85,63 @@ var_t_x *alloc_mat_x(int n, int m) {
       free(res);
       return NULL;
     }
+#endif
   }
   return res;
 }
 
 var_t_x *alloc_tensor_3d_x(int n, int m, int c) {
   var_t_x *res = (var_t_x *)malloc(sizeof(var_t_x));
+#ifdef NN_NOCHECK_X
   if (res == NULL)
     return NULL;
+#endif
   res->type = TENSOR_3D_X;
   res->val = malloc(sizeof(tensor_3d_t_x));
+#ifdef NN_NOCHECK_X
   if (res->val == NULL) {
     free(res);
     return NULL;
   }
+#endif
   int i = -1, j = -1;
   tensor_3d_t_x *val = (tensor_3d_t_x *)res->val;
   val->n = n;
   val->m = m;
   val->c = c;
   val->tensor = (num_t_x ***)malloc(n*sizeof(num_t_x **));
+#ifdef NN_NOCHECK_X
   if (val->tensor == NULL) {
     free(res->val);
     free(res);
     return NULL;
   }
   int ok = 1;
+#endif
   for (i = 0; i < n; ++i) {
     j = -1;
     val->tensor[i] = (num_t_x **)malloc(m*sizeof(num_t_x *));
+#ifdef NN_NOCHECK_X
     if (val->tensor[i] == NULL) {
       ok = 0;
       break;
     }
+#endif
     for (j = 0; j < m; ++j) {
       val->tensor[i][j] = (num_t_x *)malloc(c*sizeof(num_t_x));
+#ifdef NN_NOCHECK_X
       if (val->tensor[i][j] == NULL) {
         ok = 0;
         break;
       }
+#endif
     }
+#ifdef NN_NOCHECK_X
     if (!ok)
       break;
+#endif
   }
+#ifdef NN_NOCHECK_X
   if (!ok) {
     int i2, j2;
     for (i2 = 0; i2 <= i; ++i2) {
@@ -123,6 +154,7 @@ var_t_x *alloc_tensor_3d_x(int n, int m, int c) {
     free(res);
     return NULL;
   }
+#endif
   return res;
 }
 
@@ -190,4 +222,65 @@ int fprint_var_x(FILE *out, var_t_x *pt) {
   }
   fflush(out);
   return ferror(out);
+}
+
+void set_seed_x(unsigned int seed) {
+  srand(seed);
+}
+
+num_t_x random_uniform_x(num_t_x a, num_t_x b) {
+  num_t_x r = ((num_t_x)rand())/RAND_MAX;
+  return a+(b-a)*r;
+}
+
+void init_random_uniform_x(var_t_x *dat, num_t_x a, num_t_x b) {
+  int i, j, k;
+  if (dat->type == REAL_X) {
+    real_t_x *val = (real_t_x *)dat->val;
+    val->real = random_uniform_x(a, b);
+  }
+  else if (dat->type == VEC_X) {
+    vec_t_x *val = (vec_t_x *)dat->val;
+    for (i = 0; i < val->n; ++i)
+      val->vec[i] = random_uniform_x(a, b);
+  }
+  else if (dat->type == MAT_X) {
+    mat_t_x *val = (mat_t_x *)dat->val;
+    for (i = 0; i < val->n; ++i)
+      for (j = 0; j < val->m; ++j)
+        val->mat[i][j] = random_uniform_x(a, b);
+  }
+  else if (dat->type == TENSOR_3D_X) {
+    tensor_3d_t_x *val = (tensor_3d_t_x *)dat->val;
+    for (i = 0; i < val->n; ++i)
+      for (j = 0; j < val->m; ++j)
+        for (k = 0; k < val->c; ++k)
+          val->tensor[i][j][k] = random_uniform_x(a, b);
+  }
+}
+
+void init_fixed_uniform_x(var_t_x *dat, num_t_x a) {
+  int i, j, k;
+  if (dat->type == REAL_X) {
+    real_t_x *val = (real_t_x *)dat->val;
+    val->real = a;
+  }
+  else if (dat->type == VEC_X) {
+    vec_t_x *val = (vec_t_x *)dat->val;
+    for (i = 0; i < val->n; ++i)
+      val->vec[i] = a;
+  }
+  else if (dat->type == MAT_X) {
+    mat_t_x *val = (mat_t_x *)dat->val;
+    for (i = 0; i < val->n; ++i)
+      for (j = 0; j < val->m; ++j)
+        val->mat[i][j] = a;
+  }
+  else if (dat->type == TENSOR_3D_X) {
+    tensor_3d_t_x *val = (tensor_3d_t_x *)dat->val;
+    for (i = 0; i < val->n; ++i)
+      for (j = 0; j < val->m; ++j)
+        for (k = 0; k < val->c; ++k)
+          val->tensor[i][j][k] = a;
+  }
 }

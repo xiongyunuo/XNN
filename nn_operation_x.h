@@ -39,4 +39,6 @@ int deri_var_relu_x(int n, var_t_x **ins, var_t_x *out, var_t_x *out_deri, var_t
 int deri_vec_add_x(int n, var_t_x **ins, var_t_x *out, var_t_x *out_deri, var_t_x ***deri, void *attr);
 int deri_neg_log_softmax_x(int n, var_t_x **ins, var_t_x *out, var_t_x *out_deri, var_t_x ***deri, void *attr);
 
+void *copy_softmax_attr_x(void *arg);
+
 #endif

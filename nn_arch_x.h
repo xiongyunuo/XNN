@@ -2,9 +2,11 @@
 #define NN_ARCH_X_H
 
 #include "nn_variant_type_x.h"
+#include <pthread.h>
 
 typedef int (*op_func_t_x)(int, var_t_x **, var_t_x **, void *);
 typedef int (*deri_op_func_t_x)(int, var_t_x **, var_t_x *, var_t_x *, var_t_x ***, void *);
+typedef void *(*attr_cp_func_t_x)(void *);
 
 typedef struct nn_node_x {
   int inn;
@@ -22,6 +24,7 @@ typedef struct nn_node_x {
   var_t_x **bt_back_dat;
   int *bt_ready;
   void **bt_attr;
+  attr_cp_func_t_x attr_cp;
 } nn_node_t_x;
 
 typedef struct {
@@ -52,16 +55,26 @@ int nn_set_batch(nn_attr_t_x *attr, int bt);
 void nn_free_x(nn_attr_t_x *attr);
 void nn_free_node_x(nn_node_t_x *node, int bt);
 
-typedef int (*prop_func_t_x)(nn_node_t_x *, int);
+typedef int (*prop_func_t_x)(void *, int);
+
+int nn_forward_prop_node_wrap_x(void *node, int bt);
+int nn_backward_prop_node_wrap_x(void *node, int bt);
 
 typedef struct {
   int a, b;
   int status;
-  nn_node_t_x *node;
+  void *node;
   prop_func_t_x func;
+  pthread_mutex_t mutex;
+  pthread_cond_t cond;
+  pthread_cond_t *cond2;
+  pthread_mutex_t *mutex2;
+  int *count;
+  int ready;
 } prop_worker_t_x;
 
-int mult_thread_prop_x(nn_node_t_x *node, int btn, int thread_count, prop_func_t_x func);
+int mult_thread_prop_x(void *node, int btn, int thread_count, prop_func_t_x func);
 void *prop_worker_x(void *dat);
+int alloc_workers_x(int thread_count);
 
 #endif
