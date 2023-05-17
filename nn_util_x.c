@@ -284,3 +284,68 @@ void init_fixed_uniform_x(var_t_x *dat, num_t_x a) {
           val->tensor[i][j][k] = a;
   }
 }
+
+var_t_x *alloc_var_type_x(var_t_x *dat) {
+  var_t_x *res = NULL;
+  if (dat->type == REAL_X)
+    res = alloc_real_x(0);
+  else if (dat->type == VEC_X) {
+    vec_t_x *val = (vec_t_x *)dat->val;
+    res = alloc_vec_x(val->n);
+  }
+  else if (dat->type == MAT_X) {
+    mat_t_x *val = (mat_t_x *)dat->val;
+    res = alloc_mat_x(val->n, val->m);
+  }
+  else if (dat->type == TENSOR_3D_X) {
+    tensor_3d_t_x *val = (tensor_3d_t_x *)dat->val;
+    res = alloc_tensor_3d_x(val->n, val->m, val->c);
+  }
+  return res;
+}
+
+num_t_x var_squared_sum_x(var_t_x *dat) {
+  num_t_x res = 0;
+  int i, j, k;
+  if (dat->type == REAL_X) {
+    real_t_x *val = (real_t_x *)dat->val;
+    res += val->real*val->real;
+  }
+  else if (dat->type == VEC_X) {
+    vec_t_x *val = (vec_t_x *)dat->val;
+    for (i = 0; i < val->n; ++i)
+      res += val->vec[i]*val->vec[i];
+  }
+  else if (dat->type == MAT_X) {
+    mat_t_x *val = (mat_t_x *)dat->val;
+    for (i = 0; i < val->n; ++i)
+      for (j = 0; j < val->m; ++j)
+        res += val->mat[i][j]*val->mat[i][j];
+  }
+  else if (dat->type == TENSOR_3D_X) {
+    tensor_3d_t_x *val = (tensor_3d_t_x *)dat->val;
+    for (i = 0; i < val->n; ++i)
+      for (j = 0; j < val->m; ++j)
+        for (k = 0; k < val->c; ++k)
+          res += val->tensor[i][j][k]*val->tensor[i][j][k];
+  }
+  return res;
+}
+
+int var_num_elements_x(var_t_x *dat) {
+  if (dat->type == REAL_X)
+    return 1;
+  else if (dat->type == VEC_X) {
+    vec_t_x *val = (vec_t_x *)dat->val;
+    return val->n;
+  }
+  else if (dat->type == MAT_X) {
+    mat_t_x *val = (mat_t_x *)dat->val;
+    return val->n*val->m;
+  }
+  else if (dat->type == TENSOR_3D_X) {
+    tensor_3d_t_x *val = (tensor_3d_t_x *)dat->val;
+    return val->n*val->m*val->c;
+  }
+  return 0;
+}

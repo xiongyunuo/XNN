@@ -692,6 +692,7 @@ int alloc_workers_x(int thread_count) {
     status = pthread_create(&threads[i], NULL, prop_worker_x, info);
     if (status != 0)
       return status;
+    pthread_detach(threads[i]);
   }
   thread_num = thread_count;
   return 0;
@@ -709,12 +710,15 @@ int mult_thread_prop_x(void *node, int btn, int thread_count, prop_func_t_x func
   int status;
   pthread_mutex_lock(&main_mut);
   complete_count = 0;
-  alloc_workers_x(thread_count);
+  for (i = 0; i < btn; i += incre)
+    ++count;
+  alloc_workers_x(count);
+  count = 0;
   for (i = 0; i < btn; i += incre) {
     int n = incre;
     if (i+incre-1 >= btn)
       n = btn-i;
-    prop_worker_t_x *info = thread_info[i];
+    prop_worker_t_x *info = thread_info[count];
     pthread_mutex_lock(&info->mutex);
     info->a = i;
     info->b = i+n;
