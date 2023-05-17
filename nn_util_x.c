@@ -349,3 +349,41 @@ int var_num_elements_x(var_t_x *dat) {
   }
   return 0;
 }
+
+var_t_x *copy_var_type_x(var_t_x *dat) {
+  var_t_x *res = NULL;
+  int i, j, k;
+  if (dat->type == REAL_X)
+    res = alloc_real_x(((real_t_x *)dat->val)->real);
+  else if (dat->type == VEC_X) {
+    vec_t_x *val = (vec_t_x *)dat->val;
+    res = alloc_vec_x(val->n);
+    if (res == NULL)
+      return NULL;
+    vec_t_x *val2 = (vec_t_x *)res->val;
+    for (i = 0; i < val2->n; ++i)
+      val2->vec[i] = val->vec[i];
+  }
+  else if (dat->type == MAT_X) {
+    mat_t_x *val = (mat_t_x *)dat->val;
+    res = alloc_mat_x(val->n, val->m);
+    if (res == NULL)
+      return NULL;
+    mat_t_x *val2 = (mat_t_x *)res->val;
+    for (i = 0; i < val2->n; ++i)
+      for (j = 0; j < val2->m; ++j)
+        val2->mat[i][j] = val->mat[i][j];
+  }
+  else if (dat->type == TENSOR_3D_X) {
+    tensor_3d_t_x *val = (tensor_3d_t_x *)dat->val;
+    res = alloc_tensor_3d_x(val->n, val->m, val->c);
+    if (res == NULL)
+      return NULL;
+    tensor_3d_t_x *val2 = (tensor_3d_t_x *)res->val;
+    for (i = 0; i < val2->n; ++i)
+      for (j = 0; j < val2->m; ++j)
+        for (k = 0; k < val2->c; ++k)
+          val2->tensor[i][j][k] = val->tensor[i][j][k];
+  }
+  return res;
+}

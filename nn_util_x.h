@@ -18,5 +18,6 @@ void init_fixed_uniform_x(var_t_x *dat, num_t_x a);
 var_t_x *alloc_var_type_x(var_t_x *dat);
 num_t_x var_squared_sum_x(var_t_x *dat);
 int var_num_elements_x(var_t_x *dat);
+var_t_x *copy_var_type_x(var_t_x *dat);
 
 #endif

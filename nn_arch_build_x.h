@@ -107,4 +107,17 @@ int adam_update_x(var_t_x *s, var_t_x *r, var_t_x *g, num_t_x eps, num_t_x p, nu
 int ada_momentum_grad_descent_x(nn_attr_t_x *attr, grad_vel_t_x *vel, num_t_x rate, num_t_x alpha, num_t_x p, num_t_x p2, int M, int thread_count);
 int ada_mold_grad_descent_x(nn_attr_t_x *attr, mold_t_x *mold, num_t_x rate, num_t_x alpha, num_t_x p, num_t_x p2, int M, int first, int thread_count);
 
+typedef struct {
+  void *info;
+  prop_func_t_x prop_func;
+  nn_attr_t_x *unn_attr;
+  nn_attr_t_x *attr;
+  num_t_x udecay, umin;
+} uncertain_descent_info_t_x;
+
+num_t_x interval_proportion_x(num_t_x a, num_t_x b, num_t_x x);
+void uncertain_var_update_x(var_t_x *var, var_t_x *cvar, var_t_x *uvar, num_t_x udecay, num_t_x umin);
+int uncertain_descent_worker_x(void *info, int i);
+int uncertain_grad_descent_x(nn_attr_t_x *attr, nn_attr_t_x *unn_attr, void *info2, prop_func_t_x func, num_t_x udecay, num_t_x umin, int thread_count);
+
 #endif

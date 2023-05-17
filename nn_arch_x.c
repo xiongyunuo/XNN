@@ -745,3 +745,138 @@ int nn_forward_prop_node_wrap_x(void *node, int bt) {
 int nn_backward_prop_node_wrap_x(void *node, int bt) {
   return nn_backward_prop_node_x((nn_node_t_x *)node, bt);
 }
+
+var_t_x *create_uncertain_var_x(var_t_x *dat, num_t_x ns) {
+  int i, j, k;
+  var_t_x *res = NULL;
+  if (dat->type == REAL_X) {
+    real_t_x *val = (real_t_x *)dat->val;
+    res = alloc_vec_x(2);
+    if (res == NULL)
+      return NULL;
+    vec_t_x *val2 = (vec_t_x *)res->val;
+    val2->vec[0] = val->real-ns;
+    val2->vec[1] = val->real+ns;
+  }
+  else if (dat->type == VEC_X) {
+    vec_t_x *val = (vec_t_x *)dat->val;
+    res = alloc_vec_x(2*val->n);
+    if (res == NULL)
+      return NULL;
+    vec_t_x *val2 = (vec_t_x *)res->val;
+    for (i = 0; i < val->n; ++i) {
+      val2->vec[2*i] = val->vec[i]-ns;
+      val2->vec[2*i+1] = val->vec[i]+ns;
+    }
+  }
+  else if (dat->type == MAT_X) {
+    mat_t_x *val = (mat_t_x *)dat->val;
+    res = alloc_mat_x(val->n, 2*val->m);
+    if (res == NULL)
+      return NULL;
+    mat_t_x *val2 = (mat_t_x *)res->val;
+    for (i = 0; i < val->n; ++i)
+      for (j = 0; j < val->m; ++j) {
+        val2->mat[i][2*j] = val->mat[i][j]-ns;
+        val2->mat[i][2*j+1] = val->mat[i][j]+ns;
+      }
+  }
+  else if (dat->type == TENSOR_3D_X) {
+    tensor_3d_t_x *val = (tensor_3d_t_x *)dat->val;
+    res = alloc_tensor_3d_x(val->n, val->m, 2*val->c);
+    if (res == NULL)
+      return NULL;
+    tensor_3d_t_x *val2 = (tensor_3d_t_x *)res->val;
+    for (i = 0; i < val->n; ++i)
+      for (j = 0; j < val->m; ++j)
+        for (k = 0; k < val->c; ++k) {
+          val2->tensor[i][j][2*k] = val->tensor[i][j][k]-ns;
+          val2->tensor[i][j][2*k+1] = val->tensor[i][j][k]+ns;
+        }
+  }
+  return res;
+}
+
+nn_attr_t_x *create_uncertain_nn_x(nn_attr_t_x *nn, num_t_x ns) {
+  nn_attr_t_x *res = alloc_nn_attr_x();
+  if (res == NULL)
+    return NULL;
+  int i;
+  for (i = 0; i < nn->paramn; ++i) {
+    nn_node_t_x *node = alloc_nn_node_x();
+    if (node == NULL)
+      return NULL;
+    var_t_x *dat = nn->params[i]->dat;
+    node->dat = create_uncertain_var_x(dat, ns);
+    nn_add_node_x(node, res, PARAM_NODE_X);
+  }
+  return res;
+}
+
+var_t_x *sample_uncertain_var_x(var_t_x *dat) {
+  int i, j, k;
+  var_t_x *res = NULL;
+  if (dat->type == VEC_X) {
+    vec_t_x *val = (vec_t_x *)dat->val;
+    if (val->n == 2)
+      res = alloc_real_x(random_uniform_x(val->vec[0], val->vec[1]));
+    else {
+      res = alloc_vec_x(val->n/2);
+      if (res == NULL)
+        return NULL;
+      vec_t_x *val2 = (vec_t_x *)res->val;
+      for (i = 0; i < val2->n; ++i)
+        val2->vec[i] = random_uniform_x(val->vec[2*i], val->vec[2*i+1]);
+    }
+  }
+  else if (dat->type == MAT_X) {
+    mat_t_x *val = (mat_t_x *)dat->val;
+    res = alloc_mat_x(val->n, val->m/2);
+    if (res == NULL)
+      return NULL;
+    mat_t_x *val2 = (mat_t_x *)res->val;
+    for (i = 0; i < val2->n; ++i)
+      for (j = 0; j < val2->m; ++j)
+        val2->mat[i][j] = random_uniform_x(val->mat[i][2*j], val->mat[i][2*j+1]);
+  }
+  else if (dat->type == TENSOR_3D_X) {
+    tensor_3d_t_x *val = (tensor_3d_t_x *)dat->val;
+    res = alloc_tensor_3d_x(val->n, val->m, val->c/2);
+    if (res == NULL)
+      return NULL;
+    tensor_3d_t_x *val2 = (tensor_3d_t_x *)res->val;
+    for (i = 0; i < val2->n; ++i)
+      for (j = 0; j < val2->m; ++j)
+        for (k = 0; k < val2->c; ++k)
+          val2->tensor[i][j][k] = random_uniform_x(val->tensor[i][j][2*k], val->tensor[i][j][2*k+1]);
+  }
+  return res;
+}
+
+int mc_sample_worker_x(void *info, int i) {
+  mc_sample_info_t_x *inf = (mc_sample_info_t_x *)info;
+  nn_attr_t_x *nn = inf->nn;
+  nn_attr_t_x *unn = inf->unn;
+  if (nn->params[i]->dat != NULL)
+    free_var_x(nn->params[i]->dat);
+  nn->params[i]->dat = sample_uncertain_var_x(unn->params[i]->dat);
+  if (nn->params[i]->dat == NULL)
+    return -1;
+  return 0;
+}
+
+int nn_monte_carlo_sample_x(nn_attr_t_x *unn, nn_attr_t_x *nn, int thread_count) {
+  mc_sample_info_t_x info;
+  info.nn = nn;
+  info.unn = unn;
+  return mult_thread_prop_x(&info, nn->paramn, thread_count, mc_sample_worker_x);
+}
+
+void unn_free_x(nn_attr_t_x *unn) {
+  int i;
+  for (i = 0; i < unn->paramn; ++i) {
+    free_var_x(unn->params[i]->dat);
+    free(unn->params[i]);
+  }
+  free(unn);
+}

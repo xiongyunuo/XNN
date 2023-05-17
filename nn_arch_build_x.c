@@ -793,3 +793,139 @@ int ada_mold_grad_descent_x(nn_attr_t_x *attr, mold_t_x *mold, num_t_x rate, num
   mold->t += M;
   return mult_thread_prop_x(&info, attr->paramn, thread_count, ada_mold_descent_worker_x);
 }
+
+num_t_x interval_proportion_x(num_t_x a, num_t_x b, num_t_x x) {
+  return (x-a)/(b-a+1e-6);
+}
+
+void uncertain_var_update_x(var_t_x *var, var_t_x *cvar, var_t_x *uvar, num_t_x udecay, num_t_x umin) {
+  int i, j, k;
+  if (var->type == REAL_X) {
+    real_t_x *val = (real_t_x *)var->val;
+    real_t_x *cval = (real_t_x *)cvar->val;
+    vec_t_x *uval = (vec_t_x *)uvar->val;
+    num_t_x p = interval_proportion_x(uval->vec[0], uval->vec[1], cval->real);
+    num_t_x a = uval->vec[0], b = uval->vec[1];
+    uval->vec[0] -= 2*udecay*(a-b);
+    uval->vec[1] -= 2*udecay*(b-a);
+    if (p > 1) {
+      uval->vec[0] += (val->real-cval->real);
+      uval->vec[1] += (val->real-cval->real);
+    }
+    else {
+      uval->vec[0] += (1-p)*(val->real-cval->real);
+      uval->vec[1] += p*(val->real-cval->real);
+    }
+    if (uval->vec[1]-uval->vec[0] < umin) {
+      a = uval->vec[0];
+      b = uval->vec[1];
+      uval->vec[0] = (a+b)/2-umin/2;
+      uval->vec[1] = (a+b)/2+umin/2;
+    }
+  }
+  else if (var->type == VEC_X) {
+    vec_t_x *val = (vec_t_x *)var->val;
+    vec_t_x *cval = (vec_t_x *)cvar->val;
+    vec_t_x *uval = (vec_t_x *)uvar->val;
+    for (i = 0; i < val->n; ++i) {
+      num_t_x p = interval_proportion_x(uval->vec[2*i], uval->vec[2*i+1], cval->vec[i]);
+      num_t_x a = uval->vec[2*i], b = uval->vec[2*i+1];
+      uval->vec[2*i] -= 2*udecay*(a-b);
+      uval->vec[2*i+1] -= 2*udecay*(b-a);
+      if (p > 1) {
+        uval->vec[2*i] += (val->vec[i]-cval->vec[i]);
+        uval->vec[2*i+1] += (val->vec[i]-cval->vec[i]);
+      }
+      else {
+        uval->vec[2*i] += (1-p)*(val->vec[i]-cval->vec[i]);
+        uval->vec[2*i+1] += p*(val->vec[i]-cval->vec[i]);
+      }
+      if (uval->vec[2*i+1]-uval->vec[2*i] < umin) {
+        a = uval->vec[2*i];
+        b = uval->vec[2*i+1];
+        uval->vec[2*i] = (a+b)/2-umin/2;
+        uval->vec[2*i+1] = (a+b)/2+umin/2;
+      }
+    }
+  }
+  else if (var->type == MAT_X) {
+    mat_t_x *val = (mat_t_x *)var->val;
+    mat_t_x *cval = (mat_t_x *)cvar->val;
+    mat_t_x *uval = (mat_t_x *)uvar->val;
+    for (i = 0; i < val->n; ++i)
+      for (j = 0; j < val->m; ++j) {
+        num_t_x p = interval_proportion_x(uval->mat[i][2*j], uval->mat[i][2*j+1], cval->mat[i][j]);
+        num_t_x a = uval->mat[i][2*j], b = uval->mat[i][2*j+1];
+        uval->mat[i][2*j] -= 2*udecay*(a-b);
+        uval->mat[i][2*j+1] -= 2*udecay*(b-a);
+        if (p > 1) {
+          uval->mat[i][2*j] += (val->mat[i][j]-cval->mat[i][j]);
+          uval->mat[i][2*j+1] += (val->mat[i][j]-cval->mat[i][j]);
+        }
+        else {
+          uval->mat[i][2*j] += (1-p)*(val->mat[i][j]-cval->mat[i][j]);
+          uval->mat[i][2*j+1] += p*(val->mat[i][j]-cval->mat[i][j]);
+        }
+        if (uval->mat[i][2*j+1]-uval->mat[i][2*j] < umin) {
+          a = uval->mat[i][2*j];
+          b = uval->mat[i][2*j+1];
+          uval->mat[i][2*j] = (a+b)/2-umin/2;
+          uval->mat[i][2*j+1] = (a+b)/2+umin/2;
+        }
+      }
+  }
+  else if (var->type == TENSOR_3D_X) {
+    tensor_3d_t_x *val = (tensor_3d_t_x *)var->val;
+    tensor_3d_t_x *cval = (tensor_3d_t_x *)cvar->val;
+    tensor_3d_t_x *uval = (tensor_3d_t_x *)uvar->val;
+    for (i = 0; i < val->n; ++i)
+      for (j = 0; j < val->m; ++j)
+        for (k = 0; k < val->c; ++k) {
+          num_t_x p = interval_proportion_x(uval->tensor[i][j][2*k], uval->tensor[i][j][2*k+1], cval->tensor[i][j][k]);
+          num_t_x a = uval->tensor[i][j][2*k], b = uval->tensor[i][j][2*k+1];
+          uval->tensor[i][j][2*k] -= 2*udecay*(a-b);
+          uval->tensor[i][j][2*k+1] -= 2*udecay*(b-a);
+          if (p > 1) {
+            uval->tensor[i][j][2*k] += (val->tensor[i][j][k]-cval->tensor[i][j][k]);
+            uval->tensor[i][j][2*k+1] += (val->tensor[i][j][k]-cval->tensor[i][j][k]);
+          }
+          else {
+            uval->tensor[i][j][2*k] += (1-p)*(val->tensor[i][j][k]-cval->tensor[i][j][k]);
+            uval->tensor[i][j][2*k+1] += p*(val->tensor[i][j][k]-cval->tensor[i][j][k]);
+          }
+          if (uval->tensor[i][j][2*k+1]-uval->tensor[i][j][2*k] < umin) {
+            a = uval->tensor[i][j][2*k];
+            b = uval->tensor[i][j][2*k+1];
+            uval->tensor[i][j][2*k] = (a+b)/2-umin/2;
+            uval->tensor[i][j][2*k+1] = (a+b)/2+umin/2;
+          }
+        }
+  }
+}
+
+int uncertain_descent_worker_x(void *info, int i) {
+  uncertain_descent_info_t_x *inf = (uncertain_descent_info_t_x *)info;
+  nn_attr_t_x *attr = inf->attr;
+  nn_attr_t_x *unn_attr = inf->unn_attr;
+  var_t_x *copy = copy_var_type_x(attr->params[i]->dat);
+  prop_func_t_x func = inf->prop_func;
+  int status = func(inf->info, i);
+  if (status != 0)
+    return status;
+  var_t_x *var = attr->params[i]->dat;
+  var_t_x *uvar = unn_attr->params[i]->dat;
+  uncertain_var_update_x(var, copy, uvar, inf->udecay, inf->umin);
+  free_var_x(copy);
+  return 0;
+}
+
+int uncertain_grad_descent_x(nn_attr_t_x *attr, nn_attr_t_x *unn_attr, void *info2, prop_func_t_x func, num_t_x udecay, num_t_x umin, int thread_count) {
+  uncertain_descent_info_t_x info;
+  info.attr = attr;
+  info.info = info2;
+  info.unn_attr = unn_attr;
+  info.prop_func = func;
+  info.udecay = udecay;
+  info.umin = umin;
+  return mult_thread_prop_x(&info, attr->paramn, thread_count, uncertain_descent_worker_x);
+}
