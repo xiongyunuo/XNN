@@ -6,6 +6,9 @@ XNN (not to be confused with other similarly named libraries) is a multithread C
 This page only includes the source code for XNN. For the complete project, including tests, MNIST dataset in png format, refer to the release page at https://github.com/xiongyunuo/XNN/releases.
 
 Supported neural network architecture: fully connected neural network, dune neural network
+
 Supported layer: Linear, ReLU, Softmax
+
 Supported optimization algorithms: SGD, momentum, RMSProp, Adam, MOLD, AdaMOLD
+
 Supported input representation: vector, Magics
